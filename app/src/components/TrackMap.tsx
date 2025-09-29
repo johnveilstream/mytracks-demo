@@ -29,7 +29,7 @@ const MapController: React.FC<{
 
   // Fit bounds for selected track
   useEffect(() => {
-    if (track && track.track_points.length > 0) {
+    if (track && track.track_points && track.track_points.length > 0) {
       const bounds = new LatLngBounds(
         [track.bounds.south, track.bounds.west],
         [track.bounds.north, track.bounds.east]
@@ -128,7 +128,7 @@ const TrackMap: React.FC<TrackMapProps> = ({ tracks, selectedTrack, onViewportCh
     }
   }, [userLocation, hasInitializedLocation]);
 
-  const trackPoints = selectedTrack?.track_points.map(point => [
+  const trackPoints = selectedTrack?.track_points?.map(point => [
     point.latitude,
     point.longitude
   ] as [number, number]) || [];
