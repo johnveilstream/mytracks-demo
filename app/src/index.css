@@ -115,3 +115,128 @@ code {
   border-radius: 4px;
   margin: 1rem;
 }
+
+/* Track Details Styles */
+.track-details-layout {
+  display: flex;
+  gap: 1rem;
+  padding: 1rem;
+  width: 100%;
+  height: calc(100vh - 120px); /* Full height minus header */
+}
+
+.track-details-content {
+  flex: 0 0 25%; /* 25% width, don't grow or shrink */
+  overflow-y: auto;
+  padding-right: 1rem; /* Space for scrollbar */
+}
+
+/* Custom scrollbar for track details */
+.track-details-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.track-details-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.track-details-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.track-details-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.track-route-map {
+  flex: 0 0 75%; /* 75% width, don't grow or shrink */
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.track-route-map h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  flex-shrink: 0;
+}
+
+.track-route-map > div:last-child {
+  flex: 1;
+  min-height: 0; /* Allow flex item to shrink */
+}
+
+.track-details-header h2 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+}
+
+.track-description {
+  color: #666;
+  font-style: italic;
+  margin-bottom: 1rem;
+}
+
+.track-stats {
+  margin-top: 1rem;
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-item {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stat-item h3 {
+  margin: 0 0 0.5rem 0;
+  color: #666;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-item p {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.track-info, .track-bounds {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.track-info h3, .track-bounds h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+}
+
+.info-grid, .bounds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.5rem;
+}
+
+.info-item, .bounds-item {
+  padding: 0.5rem;
+  background: white;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.info-item strong, .bounds-item strong {
+  color: #666;
+}

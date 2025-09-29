@@ -3,6 +3,8 @@ export interface GPXTrack {
   filename: string;
   name: string;
   description?: string;
+  type?: string;
+  keywords?: string;
   distance: number;
   duration: number;
   elevation_gain: number;
@@ -30,9 +32,15 @@ export interface TrackPoint {
 }
 
 export interface SearchFilters {
-  query: string;
+  query?: string;
   minDistance?: number;
   maxDistance?: number;
   minDuration?: number;
   maxDuration?: number;
+  north?: number;
+  south?: number;
+  east?: number;
+  west?: number;
+  limit?: number;
+  includeRoutes?: boolean;
 }

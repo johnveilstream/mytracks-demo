@@ -1,35 +1,23 @@
-import React, { useState, useMemo } from 'react';
-import { GPXTrack, SearchFilters } from '../types';
+import React from 'react';
+import { GPXTrack } from '../types';
 
 interface TrackListProps {
   tracks: GPXTrack[];
   selectedTrack: GPXTrack | null;
   onTrackSelect: (track: GPXTrack) => void;
+  onTrackClick?: (track: GPXTrack) => void;
   loading: boolean;
   error: string | null;
-  onRefresh: () => void;
 }
 
 const TrackList: React.FC<TrackListProps> = ({
   tracks,
   selectedTrack,
   onTrackSelect,
+  onTrackClick,
   loading,
   error,
-  onRefresh,
 }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-
-  const filteredTracks = useMemo(() => {
-    if (!searchQuery.trim()) return tracks;
-    
-    const query = searchQuery.toLowerCase();
-    return tracks.filter(track => 
-      track.name.toLowerCase().includes(query) ||
-      track.filename.toLowerCase().includes(query) ||
-      (track.description && track.description.toLowerCase().includes(query))
-    );
-  }, [tracks, searchQuery]);
 
   const formatDistance = (meters: number): string => {
     const km = meters / 1000;
@@ -55,9 +43,6 @@ const TrackList: React.FC<TrackListProps> = ({
       <div className="sidebar">
         <div className="error">
           Error loading tracks: {error}
-          <button onClick={onRefresh} style={{ marginLeft: '1rem' }}>
-            Retry
-          </button>
         </div>
       </div>
     );
@@ -65,42 +50,18 @@ const TrackList: React.FC<TrackListProps> = ({
 
   return (
     <div className="sidebar">
-      <div className="search-container">
-        <input
-          type="text"
-          className="search-input"
-          placeholder="Search tracks..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        <button
-          onClick={onRefresh}
-          style={{
-            marginTop: '0.5rem',
-            padding: '0.5rem 1rem',
-            backgroundColor: '#007bff',
-            color: 'white',
-            border: 'none',
-            borderRadius: '4px',
-            cursor: 'pointer',
-            width: '100%',
-          }}
-          disabled={loading}
-        >
-          {loading ? 'Refreshing...' : 'Refresh Tracks'}
-        </button>
-      </div>
-
       {loading && (
         <div className="loading">Loading tracks...</div>
       )}
 
       <ul className="track-list">
-        {filteredTracks.map((track) => (
+        {tracks.map((track) => (
           <li
             key={track.id}
             className={`track-item ${selectedTrack?.id === track.id ? 'selected' : ''}`}
             onClick={() => onTrackSelect(track)}
+            onDoubleClick={() => onTrackClick && onTrackClick(track)}
+            style={{ cursor: 'pointer' }}
           >
             <div className="track-name">{track.name || track.filename}</div>
             <div className="track-meta">
@@ -117,9 +78,9 @@ const TrackList: React.FC<TrackListProps> = ({
         ))}
       </ul>
 
-      {!loading && filteredTracks.length === 0 && (
+      {!loading && tracks.length === 0 && (
         <div className="loading">
-          {searchQuery ? 'No tracks match your search.' : 'No tracks found. Click "Refresh Tracks" to scan for GPX files.'}
+          No tracks found in this area. Try moving the map to explore different regions.
         </div>
       )}
     </div>

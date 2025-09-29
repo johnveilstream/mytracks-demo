@@ -11,6 +11,7 @@ import (
 
 	"mytracks-api/models"
 
+	"github.com/mmcloughlin/geohash"
 	"github.com/tkrajina/gpxgo/gpx"
 )
 
@@ -37,7 +38,7 @@ func (s *GPXService) ParseGPXFile(filename string) (*models.GPXTrack, error) {
 
 func (s *GPXService) ParseGPXData(data []byte, filename string) (*models.GPXTrack, error) {
 	reader := bytes.NewReader(data)
-	
+
 	gpxData, err := gpx.Parse(reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse GPX: %w", err)
@@ -53,7 +54,7 @@ func (s *GPXService) processGPXData(gpxData *gpx.GPX, filename string) (*models.
 
 	// Use the first track
 	track := gpxData.Tracks[0]
-	
+
 	// Create the track model
 	gpxTrack := &models.GPXTrack{
 		Filename:    filename,
@@ -63,6 +64,15 @@ func (s *GPXService) processGPXData(gpxData *gpx.GPX, filename string) (*models.
 
 	if track.Description != "" {
 		gpxTrack.Description = &track.Description
+	}
+
+	if track.Type != "" {
+		gpxTrack.Type = &track.Type
+	}
+
+	// Extract keywords from GPX metadata
+	if gpxData.Metadata != nil && gpxData.Metadata.Keywords != "" {
+		gpxTrack.Keywords = &gpxData.Metadata.Keywords
 	}
 
 	// Initialize bounds
@@ -185,6 +195,11 @@ func (s *GPXService) processGPXData(gpxData *gpx.GPX, filename string) (*models.
 		East:  maxLon,
 		West:  minLon,
 	}
+
+	// Calculate centroid and geohash for spatial indexing
+	centroidLat := (minLat + maxLat) / 2
+	centroidLon := (minLon + maxLon) / 2
+	gpxTrack.Geohash = geohash.Encode(centroidLat, centroidLon)
 
 	// If no name is provided, use filename without extension
 	if gpxTrack.Name == "" {

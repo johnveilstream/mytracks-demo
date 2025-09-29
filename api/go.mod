@@ -1,11 +1,13 @@
 module mytracks-api
 
-go 1.21
+go 1.23
 
 require (
 	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.9.1
+	github.com/mmcloughlin/geohash v0.10.0
 	github.com/tkrajina/gpxgo v1.3.1
+	golang.org/x/time v0.5.0
 	gorm.io/driver/postgres v1.5.3
 	gorm.io/gorm v1.25.5
 )

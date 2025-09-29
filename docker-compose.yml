@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15-alpine
@@ -20,13 +18,17 @@ services:
   api:
     build:
       context: ./api
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "2851:8080"
     environment:
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/mytracks?sslmode=disable
       - PORT=8080
       - GPX_S3_URL=https://s3.us-west-2.amazonaws.com/app2.triptracks.io/gpx_files.tar.gz
+    volumes:
+      - ./api:/app
+      - /app/tmp  # Exclude tmp directory from volume mount
+      - gpx_data:/app/data  # Persistent storage for GPX files
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,13 +36,19 @@ services:
   app:
     build:
       context: ./app
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "2850:3000"
     environment:
       - REACT_APP_API_URL=http://localhost:2851
+      - CHOKIDAR_USEPOLLING=true  # Enable hot reloading in Docker
+      - WATCHPACK_POLLING=true
+    volumes:
+      - ./app:/app
+      - /app/node_modules  # Exclude node_modules from volume mount
     depends_on:
       - api
 
 volumes:
   postgres_data:
+  gpx_data:

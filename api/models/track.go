@@ -11,6 +11,8 @@ type GPXTrack struct {
 	Filename      string       `json:"filename" gorm:"uniqueIndex;not null"`
 	Name          string       `json:"name"`
 	Description   *string      `json:"description"`
+	Type          *string      `json:"type"`           // Track type (hiking, cycling, running, etc.)
+	Keywords      *string      `json:"keywords"`       // Keywords/tags for the track
 	Distance      float64      `json:"distance"`       // in meters
 	Duration      int          `json:"duration"`       // in seconds
 	ElevationGain float64      `json:"elevation_gain"` // in meters
@@ -20,6 +22,7 @@ type GPXTrack struct {
 	StartTime     *time.Time   `json:"start_time"`
 	EndTime       *time.Time   `json:"end_time"`
 	Bounds        Bounds       `json:"bounds" gorm:"embedded"`
+	Geohash       string       `json:"geohash" gorm:"index"` // Geohash of track centroid for spatial indexing
 	TrackPoints   []TrackPoint `json:"track_points" gorm:"foreignKey:TrackID"`
 	CreatedAt     time.Time    `json:"created_at"`
 	UpdatedAt     time.Time    `json:"updated_at"`

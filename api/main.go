@@ -1,8 +1,12 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net/http"
 	"os"
+	"sync"
+	"time"
 
 	"mytracks-api/handlers"
 	"mytracks-api/models"
@@ -10,9 +14,72 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/time/rate"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
+
+// Rate limiter per IP address
+type rateLimiter struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+var (
+	rateLimiters     = make(map[string]*rateLimiter)
+	rateLimiterMutex sync.RWMutex
+)
+
+// Clean up old rate limiters periodically
+func cleanupRateLimiters() {
+	for {
+		time.Sleep(time.Minute)
+		rateLimiterMutex.Lock()
+		for ip, rl := range rateLimiters {
+			if time.Since(rl.lastSeen) > time.Hour {
+				delete(rateLimiters, ip)
+			}
+		}
+		rateLimiterMutex.Unlock()
+	}
+}
+
+// Get or create rate limiter for IP
+func getRateLimiter(ip string) *rate.Limiter {
+	rateLimiterMutex.Lock()
+	defer rateLimiterMutex.Unlock()
+
+	rl, exists := rateLimiters[ip]
+	if !exists {
+		// Allow 10 requests per second with burst of 20
+		rateLimiters[ip] = &rateLimiter{
+			limiter:  rate.NewLimiter(10, 20),
+			lastSeen: time.Now(),
+		}
+		return rateLimiters[ip].limiter
+	}
+
+	rl.lastSeen = time.Now()
+	return rl.limiter
+}
+
+// Rate limiting middleware
+func rateLimitMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		ip := c.ClientIP()
+		limiter := getRateLimiter(ip)
+
+		if !limiter.Allow() {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "Rate limit exceeded. Please slow down.",
+			})
+			c.Abort()
+			return
+		}
+
+		c.Next()
+	}
+}
 
 func main() {
 	// Get configuration from environment
@@ -26,7 +93,7 @@ func main() {
 		port = "8080"
 	}
 
-	gpxPath := "/app/gpx_files.tar.gz"
+	gpxPath := "/app/data/gpx_files.tar.gz"
 	if envPath := os.Getenv("GPX_PATH"); envPath != "" {
 		gpxPath = envPath
 	}
@@ -56,6 +123,12 @@ func main() {
 	// Initialize services
 	trackService := services.NewTrackService(db, gpxPath)
 
+	// Start background goroutine to populate missing geohashes
+	go trackService.PopulateMissingGeohashes()
+
+	// Start background cleanup for rate limiters
+	go cleanupRateLimiters()
+
 	// Initialize handlers
 	trackHandler := handlers.NewTrackHandler(trackService)
 
@@ -69,6 +142,20 @@ func main() {
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	r.Use(cors.New(config))
 
+	// Add rate limiting middleware
+	r.Use(rateLimitMiddleware())
+
+	// Add timeout middleware only for external operations (not database queries)
+	r.Use(func(c *gin.Context) {
+		// Only apply timeout to refresh endpoint which downloads from S3
+		if c.Request.URL.Path == "/tracks/refresh" {
+			ctx, cancel := context.WithTimeout(c.Request.Context(), 60*time.Second)
+			defer cancel()
+			c.Request = c.Request.WithContext(ctx)
+		}
+		c.Next()
+	})
+
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
@@ -79,9 +166,10 @@ func main() {
 	{
 		// Track routes
 		api.GET("/tracks", trackHandler.GetTracks)
+		api.GET("/tracks/bounds", trackHandler.GetTracksByBounds)
+		api.GET("/track_coordinates", trackHandler.GetTrackCoordinates)
 		api.GET("/tracks/:id", trackHandler.GetTrack)
-		api.POST("/tracks/refresh", trackHandler.RefreshTracks)
-		api.DELETE("/tracks/:id", trackHandler.DeleteTrack)
+		api.GET("/tracks/:id/download", trackHandler.DownloadTrack)
 	}
 
 	// Start server
