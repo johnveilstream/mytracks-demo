@@ -70,9 +70,9 @@ func (s *GPXService) processGPXData(gpxData *gpx.GPX, filename string) (*models.
 		gpxTrack.Type = &track.Type
 	}
 
-	// Extract keywords from GPX metadata
-	if gpxData.Metadata != nil && gpxData.Metadata.Keywords != "" {
-		gpxTrack.Keywords = &gpxData.Metadata.Keywords
+	// Extract keywords from GPX
+	if gpxData.Keywords != "" {
+		gpxTrack.Keywords = &gpxData.Keywords
 	}
 
 	// Initialize bounds

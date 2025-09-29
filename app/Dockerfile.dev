@@ -6,6 +6,9 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 
+# Copy source code including public directory
+COPY . .
+
 EXPOSE 3000
 
 # Use start command for development (with hot reload)
