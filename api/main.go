@@ -31,6 +31,17 @@ func main() {
 		gpxPath = envPath
 	}
 
+	s3URL := os.Getenv("GPX_S3_URL")
+	if s3URL == "" {
+		s3URL = "https://s3.us-west-2.amazonaws.com/app2.triptracks.io/gpx_files.tar.gz"
+	}
+
+	// Ensure GPX archive is available (download from S3 if needed)
+	downloadService := services.NewDownloadService()
+	if err := downloadService.EnsureGPXArchive(gpxPath, s3URL); err != nil {
+		log.Fatal("Failed to ensure GPX archive availability:", err)
+	}
+
 	// Connect to database
 	db, err := gorm.Open(postgres.Open(databaseURL), &gorm.Config{})
 	if err != nil {

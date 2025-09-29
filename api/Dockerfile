@@ -27,8 +27,8 @@ WORKDIR /root/
 # Copy the binary from builder
 COPY --from=builder /app/main .
 
-# Copy the compressed GPX files archive
-COPY --from=builder /app/gpx_files.tar.gz /app/gpx_files.tar.gz
+# Create directory for GPX files (will be downloaded from S3 on startup)
+RUN mkdir -p /app
 
 EXPOSE 8080
 
