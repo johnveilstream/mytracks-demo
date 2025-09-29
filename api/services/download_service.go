@@ -36,7 +36,7 @@ func (s *DownloadService) DownloadFile(url, filePath string) error {
 	}
 
 	fmt.Printf("Downloading %s to %s...\n", url, filePath)
-	
+
 	// Create HTTP request
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
