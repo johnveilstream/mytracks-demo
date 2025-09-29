@@ -1,12 +1,7 @@
 package services
 
 import (
-	"archive/tar"
-	"compress/gzip"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"mytracks-api/models"
@@ -129,10 +124,6 @@ func (s *TrackService) GetTrackByID(id uint) (*models.GPXTrack, error) {
 	}
 	return &track, nil
 }
-
-
-
-
 
 func (s *TrackService) GetTracksByBounds(north, south, east, west float64, limit int) ([]models.GPXTrack, error) {
 	var tracks []models.GPXTrack
@@ -300,10 +291,10 @@ func (s *TrackService) GetGPXData(id uint) ([]byte, string, error) {
 
 func (s *TrackService) generateGPX(track models.GPXTrack) string {
 	var gpx strings.Builder
-	
+
 	gpx.WriteString(`<?xml version="1.0" encoding="UTF-8"?>`)
 	gpx.WriteString(`<gpx version="1.1" creator="MyTracks" xmlns="http://www.topografix.com/GPX/1/1">`)
-	
+
 	// Track metadata
 	if track.Name != "" {
 		gpx.WriteString(fmt.Sprintf(`<name>%s</name>`, track.Name))
@@ -311,15 +302,15 @@ func (s *TrackService) generateGPX(track models.GPXTrack) string {
 	if track.Description != nil && *track.Description != "" {
 		gpx.WriteString(fmt.Sprintf(`<desc>%s</desc>`, *track.Description))
 	}
-	
+
 	// Track segment
 	gpx.WriteString(`<trk>`)
 	if track.Name != "" {
 		gpx.WriteString(fmt.Sprintf(`<name>%s</name>`, track.Name))
 	}
-	
+
 	gpx.WriteString(`<trkseg>`)
-	
+
 	// Add track points
 	for _, point := range track.TrackPoints {
 		gpx.WriteString(`<trkpt lat="`)
@@ -327,22 +318,21 @@ func (s *TrackService) generateGPX(track models.GPXTrack) string {
 		gpx.WriteString(`" lon="`)
 		gpx.WriteString(fmt.Sprintf("%.6f", point.Longitude))
 		gpx.WriteString(`">`)
-		
+
 		if point.Elevation != nil {
 			gpx.WriteString(fmt.Sprintf(`<ele>%.2f</ele>`, *point.Elevation))
 		}
-		
+
 		if point.Time != nil {
 			gpx.WriteString(fmt.Sprintf(`<time>%s</time>`, point.Time.Format("2006-01-02T15:04:05Z")))
 		}
-		
+
 		gpx.WriteString(`</trkpt>`)
 	}
-	
+
 	gpx.WriteString(`</trkseg>`)
 	gpx.WriteString(`</trk>`)
 	gpx.WriteString(`</gpx>`)
-	
+
 	return gpx.String()
 }
-

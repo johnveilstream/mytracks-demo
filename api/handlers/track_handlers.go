@@ -118,7 +118,6 @@ func (h *TrackHandler) GetTrack(c *gin.Context) {
 	c.JSON(http.StatusOK, track)
 }
 
-
 func (h *TrackHandler) GetTracksByBounds(c *gin.Context) {
 	// Parse bounds parameters
 	northStr := c.Query("north")
@@ -236,4 +235,3 @@ func (h *TrackHandler) DownloadTrack(c *gin.Context) {
 	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	c.Data(http.StatusOK, "application/gpx+xml", gpxData)
 }
-
