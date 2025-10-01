@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -195,6 +196,19 @@ func main() {
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(200, gin.H{"status": "ok"})
+	})
+
+	// Environment variables endpoint
+	r.GET("/env-vars", func(c *gin.Context) {
+		envVars := make(map[string]string)
+		for _, env := range os.Environ() {
+			// Split on first '=' to handle values that contain '='
+			parts := strings.SplitN(env, "=", 2)
+			if len(parts) == 2 {
+				envVars[parts[0]] = parts[1]
+			}
+		}
+		c.JSON(200, gin.H{"environment_variables": envVars})
 	})
 
 	// API routes

@@ -42,6 +42,9 @@ services:
     environment:
       - CHOKIDAR_USEPOLLING=true  # Enable hot reloading in Docker
       - WATCHPACK_POLLING=true
+      - REACT_APP_API_URL=http://localhost:2851
+      - REACT_APP_ENVIRONMENT=development
+      - REACT_APP_VERSION=1.0.0
     volumes:
       - ./app:/app
       - /app/node_modules  # Exclude node_modules from volume mount
