@@ -6,7 +6,36 @@ const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:2851';
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+  },
 });
+
+// Add request interceptor for debugging
+api.interceptors.request.use(
+  (config) => {
+    console.log(`Making API request to: ${config.baseURL}${config.url}`);
+    return config;
+  },
+  (error) => {
+    console.error('API request error:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Add response interceptor for error handling
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    console.error('API response error:', error.response?.status, error.response?.data);
+    if (error.code === 'ERR_NETWORK') {
+      console.error('Network error - check if API server is running');
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const trackAPI = {
   // Get all tracks with optional search filters

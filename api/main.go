@@ -138,9 +138,45 @@ func main() {
 	// Configure CORS
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
-	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Accept", "X-Requested-With"}
+	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "HEAD", "PATCH"}
+	config.AllowCredentials = true
+	config.ExposeHeaders = []string{"Content-Length", "Content-Type"}
 	r.Use(cors.New(config))
+
+	// Add explicit OPTIONS handler for preflight requests
+	r.OPTIONS("/*path", func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Length, Content-Type, Authorization, Accept, X-Requested-With")
+		c.Header("Access-Control-Allow-Credentials", "true")
+		c.Status(200)
+	})
+
+	// Add CORS debugging middleware
+	r.Use(func(c *gin.Context) {
+		origin := c.Request.Header.Get("Origin")
+		method := c.Request.Method
+		path := c.Request.URL.Path
+
+		// Log CORS requests for debugging
+		if origin != "" {
+			log.Printf("CORS request: %s %s from origin: %s", method, path, origin)
+		}
+
+		// Always set CORS headers
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Length, Content-Type, Authorization, Accept, X-Requested-With")
+		c.Header("Access-Control-Allow-Credentials", "true")
+
+		if method == "OPTIONS" {
+			c.Status(200)
+			return
+		}
+
+		c.Next()
+	})
 
 	// Add rate limiting middleware
 	r.Use(rateLimitMiddleware())
