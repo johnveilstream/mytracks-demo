@@ -40,7 +40,6 @@ services:
     ports:
       - "2850:3000"
     environment:
-      - REACT_APP_API_URL=http://localhost:2851
       - CHOKIDAR_USEPOLLING=true  # Enable hot reloading in Docker
       - WATCHPACK_POLLING=true
     volumes:
