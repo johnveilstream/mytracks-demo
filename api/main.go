@@ -175,7 +175,7 @@ func main() {
 	// Start server
 	log.Printf("Starting server on port %s", port)
 	log.Printf("GPX files source: %s", gpxPath)
-	if err := r.Run(":" + port); err != nil {
+	if err := r.Run("0.0.0.0:" + port); err != nil {
 		log.Fatal("Failed to start server:", err)
 	}
 }
