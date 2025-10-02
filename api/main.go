@@ -33,18 +33,18 @@ type rateLimiter struct {
 
 // Seeding progress tracking
 type SeedingProgress struct {
-	TotalTracks    int  `json:"total_tracks"`
-	LoadedTracks   int  `json:"loaded_tracks"`
-	IsComplete     bool `json:"is_complete"`
-	IsRunning      bool `json:"is_running"`
-	ErrorMessage   string `json:"error_message,omitempty"`
-	LastUpdated    time.Time `json:"last_updated"`
+	TotalTracks  int       `json:"total_tracks"`
+	LoadedTracks int       `json:"loaded_tracks"`
+	IsComplete   bool      `json:"is_complete"`
+	IsRunning    bool      `json:"is_running"`
+	ErrorMessage string    `json:"error_message,omitempty"`
+	LastUpdated  time.Time `json:"last_updated"`
 }
 
 var (
 	rateLimiters     = make(map[string]*rateLimiter)
 	rateLimiterMutex sync.RWMutex
-	
+
 	// Seeding progress tracking
 	seedingProgress = &SeedingProgress{
 		TotalTracks:  0,
@@ -169,7 +169,7 @@ func loadTracksFromTar(db *gorm.DB, tarPath string, gpxService *services.GPXServ
 
 			loaded++
 			updateSeedingProgress(loaded, seedingProgress.TotalTracks, false, "")
-			
+
 			// Log progress every 100 tracks
 			if loaded%100 == 0 {
 				log.Printf("Loaded %d/%d tracks...", loaded, seedingProgress.TotalTracks)
@@ -184,7 +184,7 @@ func loadTracksFromTar(db *gorm.DB, tarPath string, gpxService *services.GPXServ
 func updateSeedingProgress(loaded, total int, complete bool, errorMsg string) {
 	seedingMutex.Lock()
 	defer seedingMutex.Unlock()
-	
+
 	seedingProgress.LoadedTracks = loaded
 	seedingProgress.TotalTracks = total
 	seedingProgress.IsComplete = complete
@@ -197,7 +197,7 @@ func updateSeedingProgress(loaded, total int, complete bool, errorMsg string) {
 func getSeedingProgress() SeedingProgress {
 	seedingMutex.RLock()
 	defer seedingMutex.RUnlock()
-	
+
 	return *seedingProgress
 }
 
@@ -205,7 +205,7 @@ func getSeedingProgress() SeedingProgress {
 func startSeedingProcess(db *gorm.DB, tarPath string) {
 	go func() {
 		log.Println("Starting track seeding process...")
-		
+
 		// Count total tracks in tar.gz
 		totalTracks, err := countGPXFilesInTar(tarPath)
 		if err != nil {
@@ -213,24 +213,24 @@ func startSeedingProcess(db *gorm.DB, tarPath string) {
 			updateSeedingProgress(0, 0, false, fmt.Sprintf("Error counting tracks: %v", err))
 			return
 		}
-		
+
 		log.Printf("Found %d GPX files in tar.gz", totalTracks)
-		
+
 		// Check how many tracks are already in database
 		var existingCount int64
 		db.Model(&models.GPXTrack{}).Count(&existingCount)
 		log.Printf("Found %d existing tracks in database", existingCount)
-		
+
 		// If we already have all tracks, mark as complete
 		if int(existingCount) >= totalTracks {
 			log.Println("All tracks already loaded, seeding complete")
 			updateSeedingProgress(totalTracks, totalTracks, true, "")
 			return
 		}
-		
+
 		// Initialize progress tracking
 		updateSeedingProgress(int(existingCount), totalTracks, false, "")
-		
+
 		// Load tracks from tar.gz
 		gpxService := services.NewGPXService()
 		err = loadTracksFromTar(db, tarPath, gpxService)
@@ -239,7 +239,7 @@ func startSeedingProcess(db *gorm.DB, tarPath string) {
 			updateSeedingProgress(0, totalTracks, false, fmt.Sprintf("Error loading tracks: %v", err))
 			return
 		}
-		
+
 		// Mark as complete
 		log.Println("Track seeding completed successfully")
 		updateSeedingProgress(totalTracks, totalTracks, true, "")

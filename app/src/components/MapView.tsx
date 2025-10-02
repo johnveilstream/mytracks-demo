@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TrackList from './TrackList';
 import TrackMap from './TrackMap';
-import LocationSearch from './LocationSearch';
+import SeedingProgressBar from './SeedingProgressBar';
 import { GPXTrack } from '../types';
 import { trackAPI } from '../api';
 
@@ -53,25 +53,6 @@ const MapView: React.FC = () => {
     navigate(`/track/${track.id}`);
   };
 
-  const handleLocationSearch = async (bounds: { north: number; south: number; east: number; west: number }) => {
-    setLoading(true);
-    setError(null);
-    setSelectedTrack(null); // Clear selected track when searching by location
-    try {
-      const data = await trackAPI.getTracks({
-        north: bounds.north,
-        south: bounds.south,
-        east: bounds.east,
-        west: bounds.west,
-        limit: 50
-      });
-      setTracks(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to search tracks');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleViewportChange = useCallback((bounds: { north: number; south: number; east: number; west: number }) => {
     // Don't reload if a track is selected (user is viewing a specific track)
@@ -101,9 +82,7 @@ const MapView: React.FC = () => {
     <div className="app">
       <header className="header">
         <h1>MyTracks - GPX Explorer</h1>
-        <div style={{ marginTop: '1rem', maxWidth: '400px' }}>
-          <LocationSearch onLocationSearch={handleLocationSearch} loading={loading} />
-        </div>
+        <SeedingProgressBar />
       </header>
       <main className="main-content">
         <TrackList
