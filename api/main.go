@@ -86,7 +86,7 @@ func main() {
 	// Get configuration from environment
 	databaseURL := os.Getenv("DATABASE_URL")
 	if databaseURL == "" {
-		databaseURL = "postgres://postgres:postgres@localhost:5432/mytracks?sslmode=disable"
+		databaseURL = "postgres://postgres:postgres@postgres:5432/mytracks?sslmode=disable"
 	}
 
 	port := os.Getenv("PORT")
