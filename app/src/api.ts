@@ -118,4 +118,17 @@ export const trackAPI = {
     return response.data;
   },
 
+  // Get seeding progress
+  getSeedingProgress: async (): Promise<{
+    total_tracks: number;
+    loaded_tracks: number;
+    is_complete: boolean;
+    is_running: boolean;
+    error_message?: string;
+    last_updated: string;
+  }> => {
+    const response = await api.get('/seeding-progress');
+    return response.data;
+  },
+
 };

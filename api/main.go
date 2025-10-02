@@ -1,10 +1,15 @@
 package main
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
+	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -26,10 +31,220 @@ type rateLimiter struct {
 	lastSeen time.Time
 }
 
+// Seeding progress tracking
+type SeedingProgress struct {
+	TotalTracks    int  `json:"total_tracks"`
+	LoadedTracks   int  `json:"loaded_tracks"`
+	IsComplete     bool `json:"is_complete"`
+	IsRunning      bool `json:"is_running"`
+	ErrorMessage   string `json:"error_message,omitempty"`
+	LastUpdated    time.Time `json:"last_updated"`
+}
+
 var (
 	rateLimiters     = make(map[string]*rateLimiter)
 	rateLimiterMutex sync.RWMutex
+	
+	// Seeding progress tracking
+	seedingProgress = &SeedingProgress{
+		TotalTracks:  0,
+		LoadedTracks: 0,
+		IsComplete:   false,
+		IsRunning:    false,
+		LastUpdated:  time.Now(),
+	}
+	seedingMutex sync.RWMutex
 )
+
+// CountGPXFilesInTar counts the number of .gpx files in a tar.gz archive
+func countGPXFilesInTar(tarPath string) (int, error) {
+	file, err := os.Open(tarPath)
+	if err != nil {
+		return 0, fmt.Errorf("failed to open tar file: %w", err)
+	}
+	defer file.Close()
+
+	// Check if file is empty
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get file info: %w", err)
+	}
+	if fileInfo.Size() == 0 {
+		return 0, fmt.Errorf("tar file is empty")
+	}
+
+	gzReader, err := gzip.NewReader(file)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+	defer gzReader.Close()
+
+	tarReader := tar.NewReader(gzReader)
+	count := 0
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return 0, fmt.Errorf("error reading tar: %w", err)
+		}
+
+		if header.Typeflag == tar.TypeReg && strings.HasSuffix(strings.ToLower(header.Name), ".gpx") {
+			count++
+		}
+	}
+
+	return count, nil
+}
+
+// LoadTracksFromTar loads all GPX tracks from a tar.gz file into the database
+func loadTracksFromTar(db *gorm.DB, tarPath string, gpxService *services.GPXService) error {
+	file, err := os.Open(tarPath)
+	if err != nil {
+		return fmt.Errorf("failed to open tar file: %w", err)
+	}
+	defer file.Close()
+
+	// Check if file is empty
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return fmt.Errorf("failed to get file info: %w", err)
+	}
+	if fileInfo.Size() == 0 {
+		return fmt.Errorf("tar file is empty")
+	}
+
+	gzReader, err := gzip.NewReader(file)
+	if err != nil {
+		return fmt.Errorf("failed to create gzip reader: %w", err)
+	}
+	defer gzReader.Close()
+
+	tarReader := tar.NewReader(gzReader)
+	loaded := 0
+
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("error reading tar: %w", err)
+		}
+
+		if header.Typeflag == tar.TypeReg && strings.HasSuffix(strings.ToLower(header.Name), ".gpx") {
+			// Read the GPX file content
+			gpxData := make([]byte, header.Size)
+			_, err := io.ReadFull(tarReader, gpxData)
+			if err != nil {
+				log.Printf("Error reading GPX file %s: %v", header.Name, err)
+				continue
+			}
+
+			// Parse the GPX data
+			track, err := gpxService.ParseGPXData(gpxData, filepath.Base(header.Name))
+			if err != nil {
+				log.Printf("Error parsing GPX file %s: %v", header.Name, err)
+				continue
+			}
+
+			// Check if track already exists
+			var existingTrack models.GPXTrack
+			result := db.Where("filename = ?", track.Filename).First(&existingTrack)
+			if result.Error == nil {
+				// Track already exists, skip
+				log.Printf("Track %s already exists, skipping", track.Filename)
+				loaded++
+				updateSeedingProgress(loaded, seedingProgress.TotalTracks, false, "")
+				continue
+			}
+
+			// Create the track in database
+			if err := db.Create(track).Error; err != nil {
+				log.Printf("Error creating track %s: %v", track.Filename, err)
+				continue
+			}
+
+			loaded++
+			updateSeedingProgress(loaded, seedingProgress.TotalTracks, false, "")
+			
+			// Log progress every 100 tracks
+			if loaded%100 == 0 {
+				log.Printf("Loaded %d/%d tracks...", loaded, seedingProgress.TotalTracks)
+			}
+		}
+	}
+
+	return nil
+}
+
+// updateSeedingProgress updates the seeding progress in a thread-safe manner
+func updateSeedingProgress(loaded, total int, complete bool, errorMsg string) {
+	seedingMutex.Lock()
+	defer seedingMutex.Unlock()
+	
+	seedingProgress.LoadedTracks = loaded
+	seedingProgress.TotalTracks = total
+	seedingProgress.IsComplete = complete
+	seedingProgress.IsRunning = !complete
+	seedingProgress.ErrorMessage = errorMsg
+	seedingProgress.LastUpdated = time.Now()
+}
+
+// getSeedingProgress returns the current seeding progress in a thread-safe manner
+func getSeedingProgress() SeedingProgress {
+	seedingMutex.RLock()
+	defer seedingMutex.RUnlock()
+	
+	return *seedingProgress
+}
+
+// startSeedingProcess starts the background track loading process
+func startSeedingProcess(db *gorm.DB, tarPath string) {
+	go func() {
+		log.Println("Starting track seeding process...")
+		
+		// Count total tracks in tar.gz
+		totalTracks, err := countGPXFilesInTar(tarPath)
+		if err != nil {
+			log.Printf("Error counting tracks in tar.gz: %v", err)
+			updateSeedingProgress(0, 0, false, fmt.Sprintf("Error counting tracks: %v", err))
+			return
+		}
+		
+		log.Printf("Found %d GPX files in tar.gz", totalTracks)
+		
+		// Check how many tracks are already in database
+		var existingCount int64
+		db.Model(&models.GPXTrack{}).Count(&existingCount)
+		log.Printf("Found %d existing tracks in database", existingCount)
+		
+		// If we already have all tracks, mark as complete
+		if int(existingCount) >= totalTracks {
+			log.Println("All tracks already loaded, seeding complete")
+			updateSeedingProgress(totalTracks, totalTracks, true, "")
+			return
+		}
+		
+		// Initialize progress tracking
+		updateSeedingProgress(int(existingCount), totalTracks, false, "")
+		
+		// Load tracks from tar.gz
+		gpxService := services.NewGPXService()
+		err = loadTracksFromTar(db, tarPath, gpxService)
+		if err != nil {
+			log.Printf("Error loading tracks: %v", err)
+			updateSeedingProgress(0, totalTracks, false, fmt.Sprintf("Error loading tracks: %v", err))
+			return
+		}
+		
+		// Mark as complete
+		log.Println("Track seeding completed successfully")
+		updateSeedingProgress(totalTracks, totalTracks, true, "")
+	}()
+}
 
 // Clean up old rate limiters periodically
 func cleanupRateLimiters() {
@@ -130,6 +345,9 @@ func main() {
 	// Start background cleanup for rate limiters
 	go cleanupRateLimiters()
 
+	// Start track seeding process
+	startSeedingProcess(db, gpxPath)
+
 	// Initialize handlers
 	trackHandler := handlers.NewTrackHandler(trackService)
 
@@ -209,6 +427,12 @@ func main() {
 			}
 		}
 		c.JSON(200, gin.H{"environment_variables": envVars})
+	})
+
+	// Seeding progress endpoint
+	r.GET("/seeding-progress", func(c *gin.Context) {
+		progress := getSeedingProgress()
+		c.JSON(200, progress)
 	})
 
 	// API routes
