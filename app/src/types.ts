@@ -37,6 +37,7 @@ export interface SearchFilters {
   maxDistance?: number;
   minDuration?: number;
   maxDuration?: number;
+  estimatedDuration?: number;
   north?: number;
   south?: number;
   east?: number;
