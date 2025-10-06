@@ -58,7 +58,7 @@ func (s *TrackService) GetTracks(query string, minDistance, maxDistance *float64
 }
 
 // GetTracksWithLocation returns tracks with optional geographic filtering using geohash optimization
-func (s *TrackService) GetTracksWithLocation(query string, north, south, east, west *float64, minDistance, maxDistance *float64, minDuration, maxDuration *int, limit int, includeRoutes bool) ([]models.GPXTrack, error) {
+func (s *TrackService) GetTracksWithLocation(query string, north, south, east, west *float64, minDistance, maxDistance *float64, minDuration, maxDuration *int, estimatedDuration *int, limit int, includeRoutes bool) ([]models.GPXTrack, error) {
 	var tracks []models.GPXTrack
 
 	// Optionally preload track points for route display
@@ -109,6 +109,16 @@ func (s *TrackService) GetTracksWithLocation(query string, north, south, east, w
 	}
 	if maxDuration != nil {
 		db = db.Where("duration <= ?", *maxDuration)
+	}
+
+	// Apply estimated duration filter (±1 hour)
+	if estimatedDuration != nil {
+		// Convert estimated duration from hours to seconds
+		estimatedSeconds := *estimatedDuration * 3600
+		// Add/subtract 1 hour (3600 seconds)
+		minEstDuration := estimatedSeconds - 3600
+		maxEstDuration := estimatedSeconds + 3600
+		db = db.Where("duration >= ? AND duration <= ?", minEstDuration, maxEstDuration)
 	}
 
 	// Order by creation date (newest first) and apply limit
