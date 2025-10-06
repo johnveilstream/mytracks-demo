@@ -1,0 +1,26 @@
+FROM golang:1.23-alpine
+
+WORKDIR /app
+
+# Install development dependencies
+RUN apk add --no-cache git
+
+# Install air for hot reloading (use specific version compatible with Go 1.23)
+RUN go install github.com/air-verse/air@v1.60.0
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Create data directory for GPX files
+RUN mkdir -p /app/data
+
+EXPOSE 8080
+
+# Use air for hot reloading in development
+CMD ["air", "-c", ".air.toml"]

@@ -49,6 +49,7 @@ Thumbs.db
 # Large data files
 api/gpx_files/
 api/gpx_files.tar.gz
+api/data/gpx_files.tar.gz
 *.gpx
 
 # Temporary files
