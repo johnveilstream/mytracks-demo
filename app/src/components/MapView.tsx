@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import TrackList from './TrackList';
 import TrackMap from './TrackMap';
 import SeedingProgressBar from './SeedingProgressBar';
+import HamburgerMenu from './HamburgerMenu';
 import { GPXTrack } from '../types';
 import { trackAPI } from '../api';
 
@@ -81,7 +82,10 @@ const MapView: React.FC = () => {
   return (
     <div className="app">
       <header className="header">
-        <h1>MyTracks - GPX Explorer</h1>
+        <div className="header-content">
+          <h1>MyTracks - GPX Explorer</h1>
+          <HamburgerMenu />
+        </div>
         <SeedingProgressBar />
       </header>
       <main className="main-content">

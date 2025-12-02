@@ -57,6 +57,9 @@ export const trackAPI = {
     if (filters?.maxDuration !== undefined) {
       params.append('max_duration', filters.maxDuration.toString());
     }
+    if (filters?.estimatedDuration !== undefined) {
+      params.append('estimated_duration', filters.estimatedDuration.toString());
+    }
     // Add geographic bounds parameters
     if (filters?.north !== undefined) {
       params.append('north', filters.north.toString());

@@ -27,6 +27,7 @@ func (h *TrackHandler) GetTracks(c *gin.Context) {
 
 	var minDistance, maxDistance *float64
 	var minDuration, maxDuration *int
+	var estimatedDuration *int
 	var north, south, east, west *float64
 
 	// Parse distance filters
@@ -52,6 +53,13 @@ func (h *TrackHandler) GetTracks(c *gin.Context) {
 	if maxDurStr := c.Query("max_duration"); maxDurStr != "" {
 		if val, err := strconv.Atoi(maxDurStr); err == nil {
 			maxDuration = &val
+		}
+	}
+
+	// Parse estimated duration filter
+	if estDurStr := c.Query("estimated_duration"); estDurStr != "" {
+		if val, err := strconv.Atoi(estDurStr); err == nil {
+			estimatedDuration = &val
 		}
 	}
 
@@ -92,7 +100,7 @@ func (h *TrackHandler) GetTracks(c *gin.Context) {
 	includeRoutes := c.Query("include_routes") == "true"
 
 	// Use the enhanced method that supports geographic filtering
-	tracks, err := h.trackService.GetTracksWithLocation(query, north, south, east, west, minDistance, maxDistance, minDuration, maxDuration, limit, includeRoutes)
+	tracks, err := h.trackService.GetTracksWithLocation(query, north, south, east, west, minDistance, maxDistance, minDuration, maxDuration, estimatedDuration, limit, includeRoutes)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
