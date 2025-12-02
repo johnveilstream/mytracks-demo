@@ -18,7 +18,7 @@ services:
   api:
     build:
       context: ./api
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     ports:
       - "2851:8080"
     environment:
@@ -36,7 +36,7 @@ services:
   app:
     build:
       context: ./app
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     ports:
       - "2850:3000"
     environment:
