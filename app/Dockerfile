@@ -1,15 +1,26 @@
-FROM node:18-alpine
+# ---------- Build stage ----------
+FROM node:18-alpine AS build
 
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Install dependencies (use npm ci for reproducible installs)
 COPY package*.json ./
-RUN npm install
+RUN npm ci --omit=dev
 
-# Copy source code
+# Copy the rest of the source and build
 COPY . .
+# Make sure your package.json has: "build": "react-scripts build" or similar
+RUN npm run build
 
-EXPOSE 3000
+# ---------- Runtime (static) stage ----------
+FROM nginx:1.27-alpine
 
-# Use start command for development (with hot reload)
-CMD ["npm", "start"]
+# Copy built static files from build stage to Nginx html directory
+COPY --from=build /app/build /usr/share/nginx/html
+
+# (Optional) Custom nginx.conf for SPA routing:
+# COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]
